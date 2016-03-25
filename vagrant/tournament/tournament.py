@@ -4,7 +4,6 @@
 #
 
 import psycopg2
-import bleach
 
 
 def connect():
@@ -51,8 +50,7 @@ def registerPlayer(name):
     """
     conn = connect()
     c = conn.cursor()
-    c.execute("INSERT INTO players (player_name) VALUES (%s)",
-              (bleach.clean(name),))
+    c.execute("INSERT INTO players (player_name) VALUES (%s)",(name,))
     conn.commit()
     conn.close()
 
