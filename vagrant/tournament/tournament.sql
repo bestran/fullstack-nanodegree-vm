@@ -19,8 +19,8 @@ CREATE TABLE players (
 
 CREATE TABLE matches (
 	match_id serial PRIMARY KEY,
-	winner int,
-	loser int
+	winner int references players(player_id),
+	loser int references players(player_id)
 );
 
 CREATE VIEW wins AS SELECT winner AS player_id, count(*) AS wins FROM matches GROUP BY winner;
