@@ -4,29 +4,46 @@
 #
 
 import psycopg2
+from contextlib import contextmanager
+
+
+@contextmanager
+def get_cursor():
+    """
+    Query helper function using context lib. Creates a cursor from a database
+    connection object, and performs queries using that cursor.
+    """
+    conn = connect()
+    c = conn.cursor()
+    try:
+        yield c
+    except:
+        raise
+    else:
+        conn.commit()
+    finally:
+        c.close()
+        conn.close()
 
 
 def connect():
     """Connect to the PostgreSQL database.  Returns a database connection."""
-    return psycopg2.connect("dbname=tournament")
+    try:
+        return psycopg2.connect("dbname=tournament")
+    except:
+        print("Could not connect to database.")
 
 
 def deleteMatches():
     """Remove all the match records from the database."""
-    conn = connect()
-    c = conn.cursor()
-    c.execute("DELETE FROM matches;")
-    conn.commit()
-    conn.close()
+    with get_cursor() as c:
+        c.execute("DELETE FROM matches;")
 
 
 def deletePlayers():
     """Remove all the player records from the database."""
-    conn = connect()
-    c = conn.cursor()
-    c.execute("DELETE FROM players;")
-    conn.commit()
-    conn.close()
+    with get_cursor() as c:
+        c.execute("DELETE FROM players;")
 
 
 def countPlayers():
@@ -48,18 +65,15 @@ def registerPlayer(name):
     Args:
       name: the player's full name (need not be unique).
     """
-    conn = connect()
-    c = conn.cursor()
-    c.execute("INSERT INTO players (player_name) VALUES (%s)",(name,))
-    conn.commit()
-    conn.close()
+    with get_cursor() as c:
+        c.execute("INSERT INTO players (player_name) VALUES (%s)", (name,))
 
 
 def playerStandings():
     """Returns a list of the players and their win records, sorted by wins.
 
-    The first entry in the list should be the player in first place, or a player
-    tied for first place if there is currently a tie.
+    The first entry in the list should be the player in first place, or a 
+    player tied for first place if there is currently a tie.
 
     Returns:
       A list of tuples, each of which contains (id, name, wins, matches):
@@ -84,12 +98,9 @@ def reportMatch(winner, loser):
       winner:  the id number of the player who won
       loser:  the id number of the player who lost
     """
-    conn = connect()
-    c = conn.cursor()
-    c.execute('INSERT INTO matches (winner, loser) VALUES (%s, %s)',
-              (winner, loser))
-    conn.commit()
-    conn.close()
+    with get_cursor() as c:
+        c.execute('INSERT INTO matches (winner, loser) VALUES (%s, %s)',
+                  (winner, loser))
 
 
 def swissPairings():
@@ -108,15 +119,11 @@ def swissPairings():
         name2: the second player's name
     """
     standings = playerStandings()
-
-    n = 0
     pairings = []
 
     # append each player pair to the pairings list
-    while n < len(standings):
-        pairings.append((standings[n][0], standings[n][1],
-                        standings[n + 1][0], standings[n + 1][1]))
-        n = n + 2
+    for player1, player2 in zip(standings[0::2], standings[1::2]):
+        pairings.append((player1[0], player1[1], player2[0], player2[1]))
 
     return pairings
 
